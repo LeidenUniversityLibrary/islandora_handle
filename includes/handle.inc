@@ -19,24 +19,7 @@ function islandora_handle_construct_handle(AbstractObject $object) {
   $admin_password = variable_get('islandora_handle_server_admin_password', 'superSecretPassword');
   $handle_service_url = islandora_handle_construct_url($object, TRUE);
   $suffix = islandora_handle_construct_suffix($object);
-  // $hostvar will be populated if host resolver is different than ingestion
-  // service.
-  $hostvar = variable_get('islandora_handle_host', '');
-  if ($hostvar == '') {
-    // We do this with language such that we don't get language specific
-    // prefixes in the URL.
-    $target = url("islandora/object/$suffix", array(
-      'language' => (object) array('language' => FALSE),
-      'absolute' => TRUE,
-    ));
-  }
-  else {
-    $path = url("islandora/object/$suffix", array(
-      'language' => (object) array('language' => FALSE),
-      'absolute' => FALSE,
-    ));
-    $target = rtrim($hostvar, '/') . '/' . ltrim($path, '/');
-  }
+  $target = islandora_handle_construct_target_url($suffix);
   $query_target = drupal_http_build_query(array('target' => $target));
   $authorization_header = 'Basic ' . base64_encode($admin_user . ':' . $admin_password);
 
@@ -61,6 +44,41 @@ function islandora_handle_construct_handle(AbstractObject $object) {
     'method' => 'POST',
   ));
   return $response;
+}
+
+/**
+ * Helper to construct a target URL.
+ *
+ * Constructed from islandora/object, appended with the given $suffix and
+ * prepended with either the local server's URL or the custom configured
+ * variable islandora_handle_host.
+ *
+ * @param string $suffix
+ *   Suffix to append to the URL.
+ *
+ * @return string
+ *   The constructed target URL.
+ */
+function islandora_handle_construct_target_url($suffix) {
+  // $hostvar will be populated if host resolver is different than ingestion
+  // service.
+  $hostvar = variable_get('islandora_handle_host', '');
+  if ($hostvar == '') {
+    // We do this with language such that we don't get language specific
+    // prefixes in the URL.
+    $target = url("islandora/object/$suffix", array(
+      'language' => (object) array('language' => FALSE),
+      'absolute' => TRUE,
+    ));
+  }
+  else {
+    $path = url("islandora/object/$suffix", array(
+      'language' => (object) array('language' => FALSE),
+      'absolute' => FALSE,
+    ));
+    $target = rtrim($hostvar, '/') . '/' . ltrim($path, '/');
+  }
+  return $target;
 }
 
 /**
@@ -354,14 +372,22 @@ function islandora_handle_retrieve_configurations_by_cmodels(array $models) {
  *   TRUE if it exists, FALSE otherwise,
  */
 function islandora_handle_datastream_content_equal(DOMDocument $alpha, DOMDocument $bravo) {
+  // XXX: DOM in PHP cannot format and remove whitespace within an existing
+  // loaded DOM. The DOMDocument::normalizeDocument method should do this but it
+  // does not appear to function as expected.
+  $clone_alpha = new DOMDocument();
+  $clone_bravo = new DOMDocument();
   $docs = array(
-    $alpha,
-    $bravo,
+    $clone_alpha,
+    $clone_bravo,
   );
   foreach ($docs as $doc) {
     $doc->formatOutput = TRUE;
     $doc->preserveWhiteSpace = FALSE;
-    $doc->normalizeDocument();
   }
-  return $alpha->saveXML() == $bravo->saveXML();
+  // XXX: Some attributes like encoding are stripped away in the inline control
+  // group, ignore the XML declarations to ensure accuracy.
+  $clone_alpha->loadXML($alpha->saveXML($alpha->documentElement));
+  $clone_bravo->loadXML($bravo->saveXML($bravo->documentElement));
+  return $clone_alpha->saveXML() == $clone_bravo->saveXML();
 }
