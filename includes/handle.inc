@@ -139,13 +139,17 @@ function islandora_handle_get_handle_location($handle) {
 function islandora_handle_update_handle_url($handle, $target) {
   if (variable_get('islandora_handle_debug_mode', FALSE)) {
     $response = new stdClass();
-    $response->code = 200;
+    $response->code = 201;
     // Munge out of the suffix out of the Handle.
     $prefix = variable_get('islandora_handle_server_prefix', '1234567');
     $suffix = str_replace("$prefix/", '', $handle);
-    db_update('islandora_handle_debug_handles')
-      ->fields(array('location' => $target))
-      ->condition('suffix', $suffix, '=')
+    db_merge('islandora_handle_debug_handles')
+      ->fields(array(
+        'location' => $target,
+        'suffix' => $suffix,
+        'handle' => $handle,
+      ))
+      ->condition('suffix', $suffix)
       ->execute();
     return $response;
   }

@@ -44,31 +44,34 @@ function islandora_handle_update_handles_batch_definition($pidlist, $chunk_size)
  * @param array|DrushBatchContext $context
  *   Batch context.
  */
-function islandora_handle_update_handles_batch_operation(array $params, array &$context) {
+function islandora_handle_update_handles_batch_operation(array $params, &$context) {
+  module_load_include('inc', 'islandora_handle', 'includes/handle');
+  module_load_include('inc', 'islandora', 'includes/derivatives');
   // Populate the sandbox.
   $sandbox = &$context['sandbox'];
   if (empty($sandbox)) {
-    $sandbox['file_handle'] = fopen($params['pidlist'], 'rb');
-    if (!$sandbox['file_handle']) {
-      throw new InvalidArgumentException(t('Failed to load the PID list at @pidlist', array(
+    if (!is_readable($params['pidlist'])) {
+      throw new InvalidArgumentException(t('Unable to read the given PID list at @pidlist', array(
         '@pidlist' => $params['pidlist'],
       )));
     }
-    module_load_include('inc', 'islandora_handle', 'includes/handle');
     $sandbox['current'] = 0;
+    $sandbox['pointer'] = 0;
   }
 
   // Cycle through some lines, do some thangs.
-  fseek($sandbox['file_handle'], $sandbox['current']);
+  $f_handle = fopen($params['pidlist'], 'rb');
+  fseek($f_handle, $sandbox['pointer']);
   for ($i = 0; $i < $params['chunk_size']; $i++) {
-    if (feof($sandbox['file_handle'])) {
+    if (feof($f_handle)) {
       drush_log(t('@lines lines processed', array(
         '@lines' => $sandbox['current'],
       )));
-      $sandbox['finished'] = 1;
+      $context['finished'] = 1;
       return;
     }
-    $pid = trim(fgets($sandbox['file_handle']));
+    $pid = trim(fgets($f_handle));
+    $sandbox['pointer'] = ftell($f_handle);
     if (empty($pid)) {
       continue;
     }
@@ -86,6 +89,14 @@ function islandora_handle_update_handles_batch_operation(array $params, array &$
       $handle = variable_get('islandora_handle_server_prefix', '1234567') . "/$suffix";
       $response = islandora_handle_update_handle_url($handle, $target);
       if ($response->code == 200) {
+        // Re-run derivative generation for configured DSID sources.
+        $configs = islandora_handle_retrieve_configurations_by_cmodels($object->models);
+        foreach ($configs as $config) {
+          islandora_do_derivatives($object, array(
+            'force' => TRUE,
+            'source_dsid' => $config->datastream,
+          ));
+        }
         $message = t('@pid: Updated handle @handle to point to @target', array(
           '@pid' => $pid,
           '@handle' => $handle,
@@ -102,5 +113,5 @@ function islandora_handle_update_handles_batch_operation(array $params, array &$
       drush_log($message);
     }
   }
-  $sandbox['finished'] = 0;
+  $context['finished'] = 0;
 }
