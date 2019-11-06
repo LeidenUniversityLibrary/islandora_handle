@@ -30,6 +30,8 @@ function islandora_handle_uninstall() {
     'islandora_handle_server_admin_username',
     'islandora_handle_server_prefix',
     'islandora_handle_server_url',
+    'islandora_handle_handler',
+    'islandora_handle_use_alias',
   );
   array_walk($variables, 'variable_del');
 
