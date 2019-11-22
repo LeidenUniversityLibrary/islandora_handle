@@ -93,6 +93,12 @@ function islandora_handle_server_form(array $form, array &$form_state) {
     '#description' => t('If unchecked when constructing the target URL, use islandora/object/PID as the target. If checked when constructing the target URL, use the URL alias if it exists.'),
     '#default_value' => variable_get('islandora_handle_use_alias', FALSE),
   );
+  $form['islandora_handle_check_metadata'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Check metadata for handle'),
+    '#description' => t('If checked and the metadata already contains a handle, no new handle is created.'),
+    '#default_value' => variable_get('islandora_handle_check_metadata', FALSE),
+  );
   $form['server_handle_submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save configuration'),
@@ -135,6 +141,8 @@ function islandora_handle_server_form_submit(array $form, array &$form_state) {
   variable_set('islandora_handle_host', $form_state['values']['server_handle_host']);
 
   variable_set('islandora_handle_use_alias', $form_state['values']['server_handle_use_alias']);
+
+  variable_set('islandora_handle_check_metadata', $form_state['values']['islandora_handle_check_metadata']);
 
   // Only create the debug table if needed.
   if (!db_table_exists('islandora_handle_debug_handles') && $default_handler === 'islandora_handle_debug') {

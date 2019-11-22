@@ -25,7 +25,11 @@ function islandora_handle_append_handle_from_configuration(AbstractObject $objec
   $messages = array();
   $handler_class = islandora_handle_retrieve_selected_handler();
   $handler = new $handler_class($object);
-
+  if (variable_get('islandora_handle_check_metadata', FALSE)) {
+    if (islandora_handle_get_handle_from_metadata($object)) {
+      return array();
+    }
+  }
   if (!$handler->readHandle($object)) {
     if ($handler->createHandle($object)) {
       $messages[] = array(
@@ -93,7 +97,13 @@ function islandora_handle_add_to_dc_datastream(AbstractObject $object, $force = 
   module_load_include('inc', 'islandora_handle', 'includes/handle');
   $handler_class = islandora_handle_retrieve_selected_handler();
   $handler = new $handler_class();
-  $handle_existence = $handler->readHandle($object);
+  $handle_existence = FALSE;
+  if (variable_get('islandora_handle_check_metadata', FALSE)) {
+    $handle_existence = (islandora_handle_get_handle_from_metadata($object, array('DC')) === FALSE);
+  }
+  else {
+    $handle_existence = $handler->readHandle($object);
+  }
   $dc_existence = isset($object['DC']);
   if ($dc_existence && $handle_existence) {
     // This could trigger many times so let's be sure that the current Handle
@@ -245,4 +255,47 @@ function islandora_handle_clean_up_handle(AbstractObject $object, $force = FALSE
     'success' => TRUE,
     'messages' => array(),
   );
+}
+
+/**
+ * Returns handle that was found in the metadata.
+ *
+ * @param AbstractObject $object
+ *   An AbstractObject representing an object in Fedora.
+ *
+ * @return string/bool
+ *   The handle if it exists in the metadata; FALSE if it does not exist.
+ */
+function islandora_handle_get_handle_from_metadata(AbstractObject $object, $dstocheck = NULL) {
+  if (!is_array($dstocheck)) {
+    $dstocheck = array('DC', 'MODS');
+  }
+  if (in_array('DC', $dstocheck) && isset($object['DC'])) {
+    $dom = new DomDocument();
+    $dom->loadXML($object['DC']->content);
+    $dom_xpath = new DomXPath($dom);
+    $dom_xpath->registerNamespace('oai_dc', 'http://www.openarchives.org/OAI/2.0/oai_dc/');
+    $dom_xpath->registerNamespace('dc', 'http://purl.org/dc/elements/1.1/');
+    $handleneturl = "http://hdl.handle.net/";
+    $identifier_results = $dom_xpath->query('/oai_dc:dc/dc:identifier[starts-with(text(), "' . $handleneturl . '")]');
+    foreach ($identifier_results as $node) {
+      if (strlen($node->nodeValue) > strlen($handleneturl)) {
+        return substr($node->nodeValue, strlen($handleneturl));
+      }
+    }
+  }
+  if (in_array('MODS', $dstocheck) && isset($object['MODS'])) {
+    $dom = new DomDocument();
+    $dom->loadXML($object['MODS']->content);
+    $dom_xpath = new DomXPath($dom);
+    $dom_xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+    $handleneturl = "http://hdl.handle.net/";
+    $identifier_results = $dom_xpath->query('/mods:mods/mods:identifier[starts-with(text(), "' . $handleneturl . '") or @type="hdl"]');
+    foreach ($identifier_results as $node) {
+      if (strlen($node->nodeValue) > strlen($handleneturl)) {
+        return substr($node->nodeValue, strlen($handleneturl));
+      }
+    }
+  }
+  return FALSE;
 }
