@@ -9,6 +9,7 @@ abstract class IslandoraHandleHandleHandler {
   protected $targetUrl;
   protected $pid;
   protected $authorizationHeader;
+  private $mdhandles = array();
 
   /**
    * IslandoraHandleHandleHandler constructor.
@@ -100,7 +101,7 @@ abstract class IslandoraHandleHandleHandler {
   public function getFullHandle($handle) {
     if ($handle instanceof AbstractObject) {
       if (variable_get('islandora_handle_check_metadata', FALSE)) {
-        $mdhandle = $this->getHandleFromMetadata($object);
+        $mdhandle = $this->getHandleFromMetadata($handle);
         if ($mdhandle) {
           return $mdhandle;
         }
@@ -207,6 +208,9 @@ abstract class IslandoraHandleHandleHandler {
     if (!is_array($dstocheck)) {
       $dstocheck = array('DC', 'MODS');
     }
+    if (isset($this->mdhandles[$object->id])) {
+      return $this->mdhandles[$object->id];
+    }
     $handle = FALSE;
     if (in_array('DC', $dstocheck) && isset($object['DC'])) {
       $dom = new DomDocument();
@@ -251,6 +255,8 @@ abstract class IslandoraHandleHandleHandler {
         $handle = FALSE;
       }
     }
+    $this->mdhandles[$object->id] = $handle;
+
     return $handle;
   }
 
