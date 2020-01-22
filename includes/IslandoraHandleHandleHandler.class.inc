@@ -94,7 +94,7 @@ abstract class IslandoraHandleHandleHandler {
    * @param string|AbstractObject $handle
    *   A Handle that we are updating in prefix/suffix form or an AbstractObject
    *   that is being updated. In the AbstractObject case a Handle URL will be
-   *   constructed to compare.
+   *   constructed or retrieved from metadata to compare .
    *
    * @return string
    *   A handle containing the prefix and suffix.
