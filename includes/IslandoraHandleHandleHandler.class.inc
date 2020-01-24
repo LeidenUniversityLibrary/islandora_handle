@@ -249,10 +249,11 @@ abstract class IslandoraHandleHandleHandler {
       // Check that the handle has the right prefix.
       list($prefix, $suffix) = explode('/', $handle);
       $prefixes = variable_get('islandora_handle_alternative_server_prefixes', array());
-      if ($prefix !== $self->prefix && !in_array($prefix, $prefixes)) {
-        watchdog('islandora_handle', 'Found handle "@handle" in metadata with unexpected prefix.', array(
+      if ($prefix !== $this->prefix && !in_array($prefix, $prefixes)) {
+        watchdog('islandora_handle', 'Found handle "@handle" in metadata with unexpected prefix "@prefix".', array(
           '@handle' => $handle,
-        ), WATCHDOG_WARNING);
+          '@prefix' => $prefix,
+        ), WATCHDOG_ERROR);
         $handle = FALSE;
       }
     }
