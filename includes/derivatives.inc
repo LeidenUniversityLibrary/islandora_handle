@@ -25,7 +25,6 @@ function islandora_handle_append_handle_from_configuration(AbstractObject $objec
   $messages = array();
   $handler_class = islandora_handle_retrieve_selected_handler();
   $handler = new $handler_class($object);
-
   if (!$handler->readHandle($object)) {
     if ($handler->createHandle($object)) {
       $messages[] = array(

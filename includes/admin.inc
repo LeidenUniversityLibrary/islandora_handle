@@ -93,6 +93,38 @@ function islandora_handle_server_form(array $form, array &$form_state) {
     '#description' => t('If unchecked when constructing the target URL, use islandora/object/PID as the target. If checked when constructing the target URL, use the URL alias if it exists.'),
     '#default_value' => variable_get('islandora_handle_use_alias', FALSE),
   );
+  $form['islandora_handle_check_metadata'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Check metadata for handle'),
+    '#description' => t('If checked and the metadata already contains a handle, no new handle is created.'),
+    '#default_value' => variable_get('islandora_handle_check_metadata', FALSE),
+  );
+  $form['islandora_handle_alternative'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use alternative handle prefix(es).'),
+    '#default_value' => (variable_get('islandora_handle_check_metadata', FALSE) && variable_get('islandora_handle_alternative_server_prefixes', FALSE)),
+    '#states' => array(
+      'visible' => array('input[name=islandora_handle_check_metadata]' => array('checked' => TRUE)),
+    ),
+  );
+  $form['islandora_handle_alternative_group'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Alternative prefix(es)'),
+    '#description' => t('When using an alternative prefix(es), the handle server should be configured to allow this.'),
+    '#states' => array(
+      'visible' => array(
+        'input[name=islandora_handle_check_metadata]' => array('checked' => TRUE),
+        'input[name=islandora_handle_alternative]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+  $form['islandora_handle_alternative_group']['alternative_server_handle_prefixes'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Prefix(es)'),
+    '#description' => t('Handle prefix(es), separated by spaces.'),
+    '#default_value' => implode(' ', variable_get('islandora_handle_alternative_server_prefixes', array())),
+  );
+
   $form['server_handle_submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save configuration'),
@@ -111,6 +143,22 @@ function islandora_handle_server_form(array $form, array &$form_state) {
 function islandora_handle_server_form_validate(array $form, array &$form_state) {
   if (valid_url($form_state['values']['server_location'], TRUE) == FALSE) {
     form_set_error('server_location', t('Must be a valid URL!'));
+  }
+  if ($form_state['values']['islandora_handle_check_metadata'] && $form_state['values']['islandora_handle_alternative']) {
+    if ($form_state['values']['alternative_server_handle_prefixes'] === '') {
+      form_set_error('alternative_server_handle_prefixes', t('An alternative prefix should be supplied.'));
+    }
+    else {
+      $prefixes = explode(' ', $form_state['values']['alternative_server_handle_prefixes']);
+      if (in_array($form_state['values']['server_handle_prefix'], $prefixes)) {
+        form_set_error('alternative_server_handle_prefixes', t('The alternative prefix should be different than the main prefix.'));
+      }
+      foreach ($prefixes as $aprefix) {
+        if (preg_match('#^[^/ ]+$#', $aprefix) !== 1) {
+          form_set_error('alternative_server_handle_prefixes', t("The alternative prefix '%prefix' is not a valid prefix, it should not contain a / or space.", array('%prefix' => $aprefix)));
+        }
+      }
+    }
   }
 }
 
@@ -135,6 +183,15 @@ function islandora_handle_server_form_submit(array $form, array &$form_state) {
   variable_set('islandora_handle_host', $form_state['values']['server_handle_host']);
 
   variable_set('islandora_handle_use_alias', $form_state['values']['server_handle_use_alias']);
+
+  variable_set('islandora_handle_check_metadata', $form_state['values']['islandora_handle_check_metadata']);
+
+  if ($form_state['values']['islandora_handle_check_metadata'] && $form_state['values']['islandora_handle_alternative']) {
+    variable_set('islandora_handle_alternative_server_prefixes', explode(' ', $form_state['values']['alternative_server_handle_prefixes']));
+  }
+  else {
+    variable_del('islandora_handle_alternative_server_prefixes');
+  }
 
   // Only create the debug table if needed.
   if (!db_table_exists('islandora_handle_debug_handles') && $default_handler === 'islandora_handle_debug') {
