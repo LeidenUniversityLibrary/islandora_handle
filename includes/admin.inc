@@ -99,14 +99,19 @@ function islandora_handle_server_form(array $form, array &$form_state) {
     '#description' => t('If checked the given namespace(s) will be removed from the suffix when constructing the handle.'),
     '#default_value' => (count(variable_get('islandora_handle_remove_namespaces', array())) > 0),
   );
-  $form['islandora_handle_remove_namespaces'] = array(
-    '#type' => 'textfield',
+  $form['islandora_handle_remove_ns_group'] = array(
+    '#type' => 'fieldset',
     '#title' => t('Namespaces to be removed'),
-    '#description' => t("Namespace(s), separated by spaces. Warning: this can lead to handle collisions, e.g. if namespace 'islandora' and 'item' are both removed, then objects 'islandora:1' and 'item:1' will get the same handle. Also, existing handles might be regenerated and replaced. Only use when you know what you are doing."),
-    '#default_value' => implode(' ', variable_get('islandora_handle_remove_namespaces', array())),
+    '#description' => t("Warning: this can lead to handle collisions, e.g. if namespace 'islandora' and 'item' are both removed, then objects 'islandora:1' and 'item:1' will get the same handle. Also, existing handles might be regenerated and replaced. Only use when you know what you are doing."),
     '#states' => array(
       'visible' => array('input[name=server_handle_can_remove_ns]' => array('checked' => TRUE)),
     ),
+  );
+  $form['islandora_handle_remove_ns_group']['islandora_handle_remove_namespaces'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Namespaces to be removed'),
+    '#description' => t('Namespace(s), separated by spaces.'),
+    '#default_value' => implode(' ', variable_get('islandora_handle_remove_namespaces', array())),
   );
   $form['server_handle_submit'] = array(
     '#type' => 'submit',
