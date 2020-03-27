@@ -93,6 +93,21 @@ function islandora_handle_server_form(array $form, array &$form_state) {
     '#description' => t('If unchecked when constructing the target URL, use islandora/object/PID as the target. If checked when constructing the target URL, use the URL alias if it exists.'),
     '#default_value' => variable_get('islandora_handle_use_alias', FALSE),
   );
+  $form['server_handle_can_remove_ns'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Remove namespace(s) from the suffix'),
+    '#description' => t('If checked the given namespace(s) will be removed from the suffix when constructing the handle.'),
+    '#default_value' => (count(variable_get('islandora_handle_remove_namespaces', array())) > 0),
+  );
+  $form['islandora_handle_remove_namespaces'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Namespaces to be removed'),
+    '#description' => t("Namespace(s), separated by spaces. Warning: this can lead to handle collisions, e.g. if namespace 'islandora' and 'item' are both removed, then objects 'islandora:1' and 'item:1' will get the same handle. Also, existing handles might be regenerated and replaced. Only use when you know what you are doing."),
+    '#default_value' => implode(' ', variable_get('islandora_handle_remove_namespaces', array())),
+    '#states' => array(
+      'visible' => array('input[name=server_handle_can_remove_ns]' => array('checked' => TRUE)),
+    ),
+  );
   $form['server_handle_submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save configuration'),
@@ -135,6 +150,13 @@ function islandora_handle_server_form_submit(array $form, array &$form_state) {
   variable_set('islandora_handle_host', $form_state['values']['server_handle_host']);
 
   variable_set('islandora_handle_use_alias', $form_state['values']['server_handle_use_alias']);
+
+  if ($form_state['values']['server_handle_can_remove_ns'] && strlen($form_state['values']['islandora_handle_remove_namespaces']) > 0) {
+    variable_set('islandora_handle_remove_namespaces', explode(' ', $form_state['values']['islandora_handle_remove_namespaces']));
+  }
+  else {
+    variable_del('islandora_handle_remove_namespaces');
+  }
 
   // Only create the debug table if needed.
   if (!db_table_exists('islandora_handle_debug_handles') && $default_handler === 'islandora_handle_debug') {

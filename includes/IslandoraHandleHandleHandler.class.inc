@@ -44,9 +44,16 @@ abstract class IslandoraHandleHandleHandler {
    *   The full Handle Service URL containing the Handle.
    */
   public function constructSuffix(AbstractObject $object) {
-    // For now we are just specifying that the suffix is the PID of the object.
-    // In the future we can modify this as we see fit.
-    return $object->id;
+    // Use the PID of the object as the suffix, but remove namespace(s) if given.
+    $suffix = $object->id;
+    if (count(variable_get('islandora_handle_remove_namespaces', array())) > 0) {
+      $regex = '/^(?:' . implode('|', variable_get('islandora_handle_remove_namespaces')) . '):?(?<=:)/';
+      $strippedsuffix = preg_replace($regex, '', $suffix);
+      if ($strippedsuffix !== NULL) {
+        $suffix = $strippedsuffix;
+      }
+    }
+    return $suffix;
   }
 
   /**
