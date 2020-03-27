@@ -9,6 +9,7 @@ abstract class IslandoraHandleHandleHandler {
   protected $targetUrl;
   protected $pid;
   protected $authorizationHeader;
+  private $mdhandles = array();
 
   /**
    * IslandoraHandleHandleHandler constructor.
@@ -93,16 +94,27 @@ abstract class IslandoraHandleHandleHandler {
    * @param string|AbstractObject $handle
    *   A Handle that we are updating in prefix/suffix form or an AbstractObject
    *   that is being updated. In the AbstractObject case a Handle URL will be
-   *   constructed to compare.
+   *   constructed or retrieved from metadata to compare .
    *
    * @return string
    *   A handle containing the prefix and suffix.
    */
   public function getFullHandle($handle) {
-    return $handle instanceof AbstractObject ? format_string('!prefix/!suffix', array(
-      '!prefix' => $this->prefix,
-      '!suffix' => $this->constructSuffix($handle),
-    )) : $handle;
+    if ($handle instanceof AbstractObject) {
+      if (variable_get('islandora_handle_check_metadata', FALSE)) {
+        $mdhandle = $this->getHandleFromMetadata($handle);
+        if ($mdhandle) {
+          return $mdhandle;
+        }
+      }
+      return format_string('!prefix/!suffix', array(
+        '!prefix' => $this->prefix,
+        '!suffix' => $this->constructSuffix($handle),
+      ));
+    }
+    else {
+      return $handle;
+    }
   }
 
   /**
@@ -182,6 +194,72 @@ abstract class IslandoraHandleHandleHandler {
         ),
       );
     }
+  }
+
+  /**
+   * Helper: Returns handle that was found in the metadata.
+   *
+   * @param AbstractObject $object
+   *   An AbstractObject representing an object in Fedora.
+   *
+   * @return string/bool
+   *   The handle if it exists in the metadata; FALSE if it does not exist.
+   */
+  public function getHandleFromMetadata(AbstractObject $object, $dstocheck = NULL) {
+    if (!is_array($dstocheck)) {
+      $dstocheck = array('DC', 'MODS');
+    }
+    if (isset($this->mdhandles[$object->id])) {
+      return $this->mdhandles[$object->id];
+    }
+    $handle = FALSE;
+    if (in_array('DC', $dstocheck) && isset($object['DC'])) {
+      $dom = new DomDocument();
+      $dom->loadXML($object['DC']->content);
+      $dom_xpath = new DomXPath($dom);
+      $dom_xpath->registerNamespace('oai_dc', 'http://www.openarchives.org/OAI/2.0/oai_dc/');
+      $dom_xpath->registerNamespace('dc', 'http://purl.org/dc/elements/1.1/');
+      $handleneturl = "http://hdl.handle.net/";
+      $identifier_results = $dom_xpath->query('/oai_dc:dc/dc:identifier[starts-with(text(), "' . $handleneturl . '")]');
+      foreach ($identifier_results as $node) {
+        if (strlen($node->nodeValue) > strlen($handleneturl)) {
+          $handle = substr($node->nodeValue, strlen($handleneturl));
+        }
+      }
+    }
+    if (!$handle && in_array('MODS', $dstocheck) && isset($object['MODS'])) {
+      $dom = new DomDocument();
+      $dom->loadXML($object['MODS']->content);
+      $dom_xpath = new DomXPath($dom);
+      $dom_xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+      $handleneturl = "http://hdl.handle.net/";
+      $identifier_results = $dom_xpath->query('/mods:mods/mods:identifier[starts-with(text(), "' . $handleneturl . '") or @type="hdl"]');
+      foreach ($identifier_results as $node) {
+        if (strlen($node->nodeValue) > strlen($handleneturl)) {
+          $handle = substr($node->nodeValue, strlen($handleneturl));
+        }
+      }
+    }
+    if ($handle) {
+      // Check that handle has the right format, possibly prefixed with hdl:.
+      $matches = array();
+      if (preg_match("!^(?:hdl:|info:hdl/)?([^/]+/[^/]+)$!", $handle, $matches) === 1) {
+        $handle = $matches[1];
+      }
+      // Check that the handle has the right prefix.
+      list($prefix, $suffix) = explode('/', $handle);
+      $prefixes = variable_get('islandora_handle_alternative_server_prefixes', array());
+      if ($prefix !== $this->prefix && !in_array($prefix, $prefixes)) {
+        watchdog('islandora_handle', 'Found handle "@handle" in metadata with unexpected prefix "@prefix".', array(
+          '@handle' => $handle,
+          '@prefix' => $prefix,
+        ), WATCHDOG_ERROR);
+        $handle = FALSE;
+      }
+    }
+    $this->mdhandles[$object->id] = $handle;
+
+    return $handle;
   }
 
   /**
