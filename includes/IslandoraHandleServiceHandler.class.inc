@@ -15,7 +15,6 @@ class IslandoraHandleServiceHandler extends IslandoraHandleHandleHandler {
    *   TRUE on creation; FALSE otherwise.
    */
   public function createHandle(AbstractObject $object) {
-    $suffix = $this->constructSuffix($object);
     $full_handle = $this->getFullHandle($object);
 
     $response = drupal_http_request($this->getServiceUrl($full_handle), array(
@@ -23,7 +22,7 @@ class IslandoraHandleServiceHandler extends IslandoraHandleHandleHandler {
         'Authorization' => $this->authorizationHeader,
       ),
       'data' => drupal_http_build_query(array(
-        'target' => $this->constructTargetUrl($suffix),
+        'target' => $this->constructTargetUrl($object),
       )),
       'method' => 'POST',
     ));
@@ -63,7 +62,7 @@ class IslandoraHandleServiceHandler extends IslandoraHandleHandleHandler {
       watchdog('islandora_handle', 'Unable to retrieve Handle location for @handle. Error: @error.', array(
         '@handle' => $full_handle,
         '@error' => $response->error,
-      ), WATCHDOG_ERROR);
+      ), WATCHDOG_DEBUG);
       return FALSE;
     }
 

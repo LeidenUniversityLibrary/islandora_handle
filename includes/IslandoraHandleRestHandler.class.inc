@@ -43,7 +43,7 @@ class IslandoraHandleRestHandler extends IslandoraHandleHandleHandler {
         array(
           'index' => 1,
           'type' => 'URL',
-          'data' => $this->constructTargetUrl($this->constructSuffix($object)),
+          'data' => $this->constructTargetUrl($object),
         ),
       )),
       'method' => 'PUT',
@@ -112,7 +112,7 @@ class IslandoraHandleRestHandler extends IslandoraHandleHandleHandler {
         '@type' => $handle_response_code ? t('Handle') : t('HTTP'),
         '@code' => $handle_response_code ? $handle_response_code['code'] : $response->code,
         '@error' => $handle_response_code ? $handle_response_code['message'] : $response->error,
-      ), WATCHDOG_ERROR);
+      ), WATCHDOG_DEBUG);
       return FALSE;
     }
 
