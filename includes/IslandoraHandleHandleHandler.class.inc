@@ -250,7 +250,7 @@ abstract class IslandoraHandleHandleHandler {
     if ($handle) {
       // Check that handle has the right format, possibly prefixed with hdl:.
       $matches = array();
-      if (preg_match("!^(?:hdl:|info:hdl/)?([^/]+/[^/]+)$!", $handle, $matches) === 1) {
+      if (preg_match("!^(?:hdl:|info:hdl/|/+)?([^/]+/[^/]+)$!", $handle, $matches) === 1) {
         $handle = $matches[1];
       }
       // Check that the handle has the right prefix.
