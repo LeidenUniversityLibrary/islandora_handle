@@ -220,17 +220,19 @@ abstract class IslandoraHandleHandleHandler {
       return $this->mdhandles[$object->id];
     }
     $handle = FALSE;
+    $handleneturl = "http://hdl.handle.net/";
+    $handlenetsurl = "https://hdl.handle.net/";
+    $xpathfilter = 'starts-with(text(), "' . $handleneturl . '") or starts-with(text(), "' . $handlenetsurl . '")';
     if (in_array('DC', $dstocheck) && isset($object['DC'])) {
       $dom = new DomDocument();
       $dom->loadXML($object['DC']->content);
       $dom_xpath = new DomXPath($dom);
       $dom_xpath->registerNamespace('oai_dc', 'http://www.openarchives.org/OAI/2.0/oai_dc/');
       $dom_xpath->registerNamespace('dc', 'http://purl.org/dc/elements/1.1/');
-      $handleneturl = "http://hdl.handle.net/";
-      $identifier_results = $dom_xpath->query('/oai_dc:dc/dc:identifier[starts-with(text(), "' . $handleneturl . '")]');
+      $identifier_results = $dom_xpath->query('/oai_dc:dc/dc:identifier[' . $xpathfilter . ']');
       foreach ($identifier_results as $node) {
         if (strlen($node->nodeValue) > strlen($handleneturl)) {
-          $handle = substr($node->nodeValue, strlen($handleneturl));
+          $handle = str_replace(array($handleneturl, $handlenetsurl), '', $node->nodeValue);
         }
       }
     }
@@ -240,10 +242,10 @@ abstract class IslandoraHandleHandleHandler {
       $dom_xpath = new DomXPath($dom);
       $dom_xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
       $handleneturl = "http://hdl.handle.net/";
-      $identifier_results = $dom_xpath->query('/mods:mods/mods:identifier[starts-with(text(), "' . $handleneturl . '") or @type="hdl"]');
+      $identifier_results = $dom_xpath->query('/mods:mods/mods:identifier[' . $xpathfilter . ' or @type="hdl"]');
       foreach ($identifier_results as $node) {
         if (strlen($node->nodeValue) > strlen($handleneturl)) {
-          $handle = substr($node->nodeValue, strlen($handleneturl));
+          $handle = str_replace(array($handleneturl, $handlenetsurl), '', $node->nodeValue);
         }
       }
     }
