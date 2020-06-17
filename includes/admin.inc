@@ -93,6 +93,12 @@ function islandora_handle_server_form(array $form, array &$form_state) {
     '#description' => t('If unchecked when constructing the target URL, use islandora/object/PID as the target. If checked when constructing the target URL, use the URL alias if it exists.'),
     '#default_value' => variable_get('islandora_handle_use_alias', FALSE),
   );
+  $form['server_handle_use_https'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use https for the hdl.handle.net URL'),
+    '#description' => t('If unchecked use http://hdl.handle.net. If checked use https://hdl.handle.net.'),
+    '#default_value' => variable_get('islandora_handle_use_https', FALSE),
+  );
   $form['server_handle_can_remove_ns'] = array(
     '#type' => 'checkbox',
     '#title' => t('Remove namespace(s) from the suffix'),
@@ -203,6 +209,8 @@ function islandora_handle_server_form_submit(array $form, array &$form_state) {
   variable_set('islandora_handle_host', $form_state['values']['server_handle_host']);
 
   variable_set('islandora_handle_use_alias', $form_state['values']['server_handle_use_alias']);
+
+  variable_set('islandora_handle_use_https', $form_state['values']['server_handle_use_https']);
 
   if ($form_state['values']['server_handle_can_remove_ns'] && strlen($form_state['values']['islandora_handle_remove_namespaces']) > 0) {
     variable_set('islandora_handle_remove_namespaces', explode(' ', $form_state['values']['islandora_handle_remove_namespaces']));
