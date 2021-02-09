@@ -223,7 +223,11 @@ abstract class IslandoraHandleHandleHandler {
     $handle = FALSE;
     $handleneturl = "http://hdl.handle.net/";
     $handlenetsurl = "https://hdl.handle.net/";
-    $xpathfilter = 'starts-with(text(), "' . $handleneturl . '") or starts-with(text(), "' . $handlenetsurl . '")';
+    $xpathfilter = 'starts-with(text(), "' . $handleneturl . $this->prefix . '/") or starts-with(text(), "' . $handlenetsurl . $this->prefix . '/")';
+    $prefixes = variable_get('islandora_handle_alternative_server_prefixes', array());
+    foreach ($prefixes as $hdlprefix) {
+      $xpathfilter .= ' or starts-with(text(), "' . $handleneturl . $hdlprefix . '/") or starts-with(text(), "' . $handlenetsurl . $hdlprefix . '/")';
+    }
     if (in_array('DC', $dstocheck) && isset($object['DC'])) {
       $dom = new DomDocument();
       $dom->loadXML($object['DC']->content);
@@ -242,7 +246,6 @@ abstract class IslandoraHandleHandleHandler {
       $dom->loadXML($object['MODS']->content);
       $dom_xpath = new DomXPath($dom);
       $dom_xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
-      $handleneturl = "http://hdl.handle.net/";
       $identifier_results = $dom_xpath->query('/mods:mods/mods:identifier[' . $xpathfilter . ' or @type="hdl"]');
       foreach ($identifier_results as $node) {
         if (strlen($node->nodeValue) > strlen($handleneturl)) {
@@ -258,7 +261,6 @@ abstract class IslandoraHandleHandleHandler {
       }
       // Check that the handle has the right prefix.
       list($prefix, $suffix) = explode('/', $handle);
-      $prefixes = variable_get('islandora_handle_alternative_server_prefixes', array());
       if ($prefix !== $this->prefix && !in_array($prefix, $prefixes)) {
         watchdog('islandora_handle', 'Found handle "@handle" in metadata with unexpected prefix "@prefix".', array(
           '@handle' => $handle,
